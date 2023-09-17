@@ -4,7 +4,6 @@ import bot_api
 
 BOT_API_KEY = '6569744404:AAEGTiIWt0L2486WsISA1j6WSoSJJP83k0o'
 
-#TEST
 bot = telebot.TeleBot(BOT_API_KEY)
 
 
