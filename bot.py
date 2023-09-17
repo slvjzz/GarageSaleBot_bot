@@ -27,7 +27,7 @@ def lots(message):
     keyboard = ReplyKeyboardMarkup()
 
     for key in req.keys():
-        button = InlineKeyboardButton(text=req.get(key).get("name"))
+        button = KeyboardButton(text=req.get(key).get("name"))
         keyboard.add(button)
 
         responce += f'{req.get(key).get("name")}: {req.get(key).get("sale_price")} {req.get(key).get("currency")}\n'
