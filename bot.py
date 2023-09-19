@@ -1,4 +1,5 @@
 import asyncio
+import telebot
 from telebot.async_telebot import AsyncTeleBot
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton, ReplyKeyboardMarkup, KeyboardButton
 import bot_api
@@ -6,6 +7,18 @@ import bot_api
 BOT_API_KEY = '6569744404:AAEGTiIWt0L2486WsISA1j6WSoSJJP83k0o'
 
 bot = AsyncTeleBot(BOT_API_KEY)
+
+
+async def get_photo(id):
+    media = []
+    req = bot_api.get_lot_photos(id)
+    if req is not None:
+        for i in req:
+            media.append(telebot.types.InputMediaPhoto(open(i, 'rb')))
+    else:
+        print('No photo')
+    print(media)
+    return media
 
 
 @bot.message_handler(commands=['start'])
@@ -43,16 +56,16 @@ async def handle_callback_query(message):
         responce = ''
         req = bot_api.get_categories()
 
-        keyboard = ReplyKeyboardMarkup()
+        keyboard = InlineKeyboardMarkup()
 
         for item in req:
-            button = KeyboardButton(text=item.get("name"))
+            id = item.get("id")
+            category_name = item.get("name")
+            button = InlineKeyboardButton(text=category_name, callback_data=f'category_{id}')
             keyboard.add(button)
 
-            responce += f'{item.get("name")}: {item.get("sale_price")} {item.get("currency")}\n'
+            responce += f'{item.get("name")}\n'
 
-        menu = InlineKeyboardButton(text='Меню', )
-        keyboard.add(menu)
         await bot.send_message(message.chat.id, text=responce, reply_markup=keyboard)
 
     elif message.text == 'Меню':
@@ -77,17 +90,40 @@ async def handle_callback_query(call):
     print(call)
     if call.data.startswith('lot_'):
         id = call.data.split('_')[1]
+        media = await get_photo(id)
         req = bot_api.get_lot(id)
-        message = f"{req.get('name')}\nОписание:{req.get('description')}\nЦена: {req.get('sale_price')} {req.get('currency')}"
-        await bot.send_message(call.message.chat.id, text=message)
-    #    lot_id = int(call.data.split('_')[1])
-    #     response = requests.get(f'http://your_flask_server/bot/lots/{lot_id}')
-    #     if response.status_code == 200:
-    #         lot_data = response.json()
-    #         # Обработайте данные лота, например, отправьте их обратно пользователю в чате бота.
-    # elif call.data == 'menu':
-    #     # Обработка нажатия на кнопку "Меню"
-    #     # Добавьте ваш код для обработки этой кнопки
-    #     pass
+        print(req)
+
+        message = f"{req.get('name')}\nОписание: {req.get('description')}\nЦена: {req.get('sale_price')} {req.get('currency')}"
+
+        keyboard = InlineKeyboardMarkup()
+        button_buy = InlineKeyboardButton(text='Купить', callback_data=f"buy_{id}")
+        keyboard.add(button_buy)
+
+        if len(media) > 0:
+            await bot.send_message(call.message.chat.id, text='Загружаю фото... Подождите')
+            await bot.send_media_group(call.message.chat.id, media)
+        await bot.send_message(call.message.chat.id, text=message, reply_markup=keyboard)
+
+    if call.data.startswith('category_'):
+        responce = ''
+        id = call.data.split('_')[1]
+        req = bot_api.get_lots_by_category(id)
+
+        keyboard = InlineKeyboardMarkup()
+
+        for item in req:
+            lot_id = item.get("id")
+            button_text = item.get("name")
+            button = InlineKeyboardButton(text=button_text, callback_data=f'lot_{lot_id}')
+            keyboard.add(button)
+
+            responce += f'{lot_id}. {item.get("name")}: {item.get("sale_price")} {item.get("currency")}\n'
+        await bot.send_message(call.message.chat.id, text=responce, reply_markup=keyboard)
+
+    if call.data.startswith('buy_'):
+        responce = ''
+        id = call.data.split('_')[1]
+        req = bot_api.get_lot_buy(id)
 
 asyncio.run(bot.polling(none_stop=True, interval=0))

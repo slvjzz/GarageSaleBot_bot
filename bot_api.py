@@ -17,3 +17,18 @@ def get_categories():
 def get_lot(id):
     lot = requests.get(BASE_URL+f'/lots/{id}')
     return lot.json()
+
+
+def get_lot_buy(id):
+    lot = requests.get(BASE_URL+f'/lots/{id}/buy')
+    return lot.json()
+
+
+def get_lot_photos(id):
+    photos = requests.get(BASE_URL+f'/lots/{id}/photos')
+    return photos.json()
+
+
+def get_lots_by_category(id):
+    lots = requests.get(BASE_URL+f'/categories/{id}')
+    return lots.json()
