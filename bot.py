@@ -3,8 +3,12 @@ import telebot
 from telebot.async_telebot import AsyncTeleBot
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton, ReplyKeyboardMarkup, KeyboardButton
 import bot_api
+import configparser
 
-BOT_API_KEY = '6569744404:AAEGTiIWt0L2486WsISA1j6WSoSJJP83k0o'
+config = configparser.ConfigParser()
+config.read('config.ini')
+
+BOT_API_KEY = config['credentials']['BOT_API_KEY']
 
 bot = AsyncTeleBot(BOT_API_KEY)
 
