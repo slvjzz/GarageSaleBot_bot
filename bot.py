@@ -105,27 +105,30 @@ async def handle_callback_query(message):
 
         await bot.send_message(message.chat.id, text='Главное меню', reply_markup=markup)
 
-    elif message.text.startswith('Лот_'):
-        id = message.text.split('_')[1].split(':')[0]
-        req = bot_api.get_lot(id)
-        print(req)
+    elif message.text == 'О боте':
+        repl = "Здесь будет информация о боте."
+        await bot.send_message(message.chat.id, text= repl)
+
+
+@bot.message_handler(func=lambda message: True)
+def process_price(message):
+    pass
 
 
 @bot.callback_query_handler(func=lambda call: True)
 async def handle_callback_query(call):
-    print('CALLL!!!!!')
-    print(call)
     if call.data.startswith('lot_'):
         id = call.data.split('_')[1]
         media = await get_photo(id)
         req = bot_api.get_lot(id)
-        print(req)
 
         message = f"{req.get('name')}\nОписание: {req.get('description')}\nЦена: {req.get('sale_price')} {req.get('currency')}"
 
         keyboard = InlineKeyboardMarkup(row_width=3)
         button_buy = InlineKeyboardButton(text='Купить', callback_data=f"buy_{id}")
+        button_counteroffer = InlineKeyboardButton(text='Предложить свою цену', callback_data=f"counteroffer_{id}")
         keyboard.add(button_buy)
+        keyboard.add(button_counteroffer)
 
         if len(media) > 0:
             await bot.send_message(call.message.chat.id, text='Загружаю фото... Подождите')
@@ -136,9 +139,6 @@ async def handle_callback_query(call):
         responce = ''
         id = call.data.split('_')[1]
         req = bot_api.get_lots_by_category(id)
-        if len(req) == 0:
-            return await bot.send_message(call.message.chat.id, text="Нет товаров в данной категории. Выбирете другую.",
-                                          reply_markup=keyboard)
 
         keyboard = InlineKeyboardMarkup(row_width=3)
 
@@ -170,7 +170,6 @@ async def handle_callback_query(call):
         req = bot_api.get_lot_buy(id)
 
         self_notification = f"Пользователь @{call.from_user.username} купил {lot.get('name')} за {lot.get('sale_price')} {lot.get('currency')}"
-        print(f"setting: {config['bot_settings']['CHAT_ID']}, type: {type(config['bot_settings']['CHAT_ID'])}")
         await bot.send_message(config['bot_settings']['CHAT_ID'], text=self_notification)
 
         message = f"""Спасибо! В ближайшее время я (@slvjzz) с вами свяжусь. 
@@ -187,5 +186,9 @@ async def handle_callback_query(call):
         message = f"Жаль, что передумали покупать {lot.get('name')}"
 
         await bot.send_message(call.message.chat.id, text=message)
+
+    if call.data.startswith('counteroffer_'):
+        id = call.data.split('_')[1]
+        await bot.send_message(call.message.chat.id, text='Введите желаемую цену')
 
 asyncio.run(bot.polling(none_stop=True, interval=0))
