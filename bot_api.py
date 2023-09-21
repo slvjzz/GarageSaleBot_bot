@@ -32,3 +32,15 @@ def get_lot_photos(id):
 def get_lots_by_category(id):
     lots = requests.get(BASE_URL+f'/categories/{id}')
     return lots.json()
+
+
+def post_bid(lot_id, auction_id, amount, user_id):
+    data = {
+        "auction_id": auction_id,
+        "lot_id": lot_id,
+        "amount": amount,
+        "user_id": user_id,
+    }
+
+    bid = requests.post(BASE_URL+f'/lots/{lot_id}/set_bid', json=data)
+    return bid.json()
