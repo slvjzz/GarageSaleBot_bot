@@ -68,18 +68,24 @@ async def get_lot(id, chat_id):
     await bot.send_message(chat_id, text=message, reply_markup=keyboard)
 
 
-async def get_lots(chat_id,):
+async def get_lots(chat_id, page):
     responce = ''
-    req = bot_api.get_lots()
+    req = bot_api.get_lots(page)
+
+    pages_buttons = []
+    current_page = req.get('pagination').get('page')
+    max_page = req.get('pagination').get('pages')
+
     if len(req) == 0:
         await bot.send_message(chat_id, text="К сожалению, все раскупили")
 
     keyboard = InlineKeyboardMarkup(row_width=3)
 
     row_buttons = []
-    for index, item in enumerate(req):
+    for index, item in enumerate(req.get("items")):
         lot_id = item.get("id")
         button_text = item.get("name")
+        number = (5 * current_page - 5) + (index + 1)
         button = InlineKeyboardButton(text=button_text, callback_data=f'lot_{lot_id}')
         row_buttons.append(button)
 
@@ -87,10 +93,22 @@ async def get_lots(chat_id,):
             keyboard.add(*row_buttons)
             row_buttons = []
 
-        responce += f'{index + 1}. {item.get("name")}: {item.get("sale_price")} {item.get("currency")}\n'
+        responce += f'{number}. {item.get("name")}: {item.get("sale_price")} {item.get("currency")}\n'
 
     if row_buttons:
         keyboard.add(*row_buttons)
+
+    if max_page > 1:
+        if current_page > 1:
+            button_back = InlineKeyboardButton(text="<--", callback_data=f'lots_{current_page-1}')
+            pages_buttons.append(button_back)
+        page_button_text = f'{current_page} / {max_page}'
+        button_pagination = InlineKeyboardButton(text=page_button_text, callback_data="page_info")
+        pages_buttons.append(button_pagination)
+        if current_page < max_page:
+            button_forward = InlineKeyboardButton(text="-->", callback_data=f'lots_{current_page+1}')
+            pages_buttons.append(button_forward)
+        keyboard.add(*pages_buttons)
 
     await bot.send_message(chat_id, text=responce, reply_markup=keyboard)
 
@@ -155,7 +173,7 @@ async def bot_home(message):
 @bot.message_handler(func=lambda message: True)
 async def handle_callback_query(message):
     if message.text == 'Лоты':
-        await get_lots(message.chat.id)
+        await get_lots(message.chat.id, 1)
 
     elif message.text == 'Категории':
         await get_categories(message.chat.id)
@@ -173,6 +191,10 @@ async def handle_callback_query(call):
     if call.data.startswith('lot_'):
         id = call.data.split('_')[1]
         await get_lot(id, call.message.chat.id)
+
+    if call.data.startswith('lots_'):
+        page = call.data.split('_')[1]
+        await get_lots(call.message.chat.id, page)
 
     if call.data.startswith('category_'):
         responce = ''
@@ -231,17 +253,16 @@ async def handle_callback_query(call):
         lot = bot_api.get_lot(id)
         message = f"Жаль, что передумали покупать {lot.get('name')}. Возвращаюсь к списку лотов."
         await bot.send_message(call.message.chat.id, text=message)
-        await get_lots(call.message.chat.id)
+        await get_lots(call.message.chat.id, 1)
 
     if call.data.startswith('counteroffer_'):
         await bot.edit_message_reply_markup(call.message.chat.id, call.message.message_id, reply_markup=None)
         id = call.data.split('_')[1]
         lot = bot_api.get_lot(id)
 
-        user_id = call.from_user.id
         user_nickname = call.from_user.username
 
-        self_notification = f"Пользователь @{call.from_user.username} хочет поторговаться за {lot.get('name')}"
+        self_notification = f"Пользователь @{user_nickname} хочет поторговаться за {lot.get('name')}"
         await bot.send_message(config['bot_settings']['CHAT_ID'], text=self_notification)
 
         message = f"""Спасибо! В ближайшее время я (@slvjzz) с вами свяжусь и мы обсудим цену. 
@@ -282,6 +303,6 @@ async def handle_callback_query(call):
         lot = bot_api.get_lot(id)
         message = f"Жаль, что передумали покупать {lot.get('name')}. Возвращаюсь к списку лотов."
         await bot.send_message(call.message.chat.id, text=message)
-        await get_lots(call.message.chat.id)
+        await get_lots(call.message.chat.id, 1)
 
 asyncio.run(bot.polling(none_stop=True, interval=0))
