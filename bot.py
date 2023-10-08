@@ -49,15 +49,18 @@ async def get_lot(id, chat_id):
         if req.get('max_bid_amount') is None:
             message += f'\nСтартовая цена аукциона: {bid}'
 
-    if req.get('max_bid_amount') is not None:
+    if req.get('max_bid_amount') is not None and req['auction_id'] is not None:
         button_bid = InlineKeyboardButton(text=f'Сделать ставку {new_bid} {req.get("currency")}',
                                           callback_data=f"bid_{id}_{new_bid}_{auction_id}")
         message += f'\nТекущая ставка: {req.get("max_bid_amount")}\nДата окончания аукциона: {req.get("auction_end_date")}'
         keyboard.add(button_bid)
-    else:
-        button_bid = InlineKeyboardButton(text=f'Сделать первую ставку {new_bid} {req.get("currency")}',
-                                          callback_data=f"bid_{id}_{new_bid}_{auction_id}")
+    elif req.get('max_bid_amount') is None and req['auction_id'] is not None:
+        button_bid = InlineKeyboardButton(text=f'Сделать первую ставку {bid} {req.get("currency")}',
+                                          callback_data=f"bid_{id}_{bid}_{auction_id}")
         keyboard.add(button_bid)
+
+    button_counteroffer = InlineKeyboardButton(text='Поторговаться', callback_data=f"counteroffer_{id}")
+    keyboard.add(button_counteroffer)
 
     if len(media) > 0:
         await bot.send_message(chat_id, text='Загружаю фото... Подождите')
@@ -177,14 +180,20 @@ async def handle_callback_query(call):
         req = bot_api.get_lots_by_category(id)
 
         keyboard = InlineKeyboardMarkup(row_width=3)
+        row_buttons = []
 
-        for item in req:
+        for index, item in enumerate(req):
             lot_id = item.get("id")
             button_text = item.get("name")
             button = InlineKeyboardButton(text=button_text, callback_data=f'lot_{lot_id}')
-            keyboard.add(button)
+            row_buttons.append(button)
 
-            responce += f'{lot_id}. {item.get("name")}: {item.get("sale_price")} {item.get("currency")}\n'
+            if len(row_buttons) == 3:
+                keyboard.add(*row_buttons)
+                row_buttons = []
+            responce += f'{index + 1}. {item.get("name")}: {item.get("sale_price")} {item.get("currency")}\n'
+        if row_buttons:
+            keyboard.add(*row_buttons)
         await bot.send_message(call.message.chat.id, text=responce, reply_markup=keyboard)
 
     if call.data.startswith('buy_'):
@@ -224,13 +233,20 @@ async def handle_callback_query(call):
         await bot.send_message(call.message.chat.id, text=message)
         await get_lots(call.message.chat.id)
 
-    # if call.data.startswith('counteroffer_'):
-    #     await bot.edit_message_reply_markup(call.message.chat.id, call.message.message_id, reply_markup=None)
-    #     id = call.data.split('_')[1]
-    #     user_id = call.from_user.id
-    #     user_nickname = call.from_user.username
-    #
-    #     await bot.send_message(call.message.chat.id, text='Введите желаемую цену')
+    if call.data.startswith('counteroffer_'):
+        await bot.edit_message_reply_markup(call.message.chat.id, call.message.message_id, reply_markup=None)
+        id = call.data.split('_')[1]
+        lot = bot_api.get_lot(id)
+
+        user_id = call.from_user.id
+        user_nickname = call.from_user.username
+
+        self_notification = f"Пользователь @{call.from_user.username} хочет поторговаться за {lot.get('name')}"
+        await bot.send_message(config['bot_settings']['CHAT_ID'], text=self_notification)
+
+        message = f"""Спасибо! В ближайшее время я (@slvjzz) с вами свяжусь и мы обсудим цену. 
+Так же можете написать мне по любым вопросам."""
+        await bot.send_message(call.message.chat.id, text=message)
 
     if call.data.startswith('bid_'):
         await bot.edit_message_reply_markup(call.message.chat.id, call.message.message_id, reply_markup=None)
