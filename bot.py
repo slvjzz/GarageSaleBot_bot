@@ -13,6 +13,9 @@ BOT_API_KEY = config['credentials']['BOT_API_KEY']
 bot = AsyncTeleBot(BOT_API_KEY)
 
 
+async def notify(chat_id, message):
+    await bot.send_message(chat_id, text=message)
+
 async def get_photo(id):
     media = []
     req = bot_api.get_lot_photos(id)
@@ -152,7 +155,14 @@ async def get_menu(chat_id):
 
 
 async def post_bid(lot_id, auction_id, amount, chat_id, user_id):
-    req = bot_api.post_bid(lot_id=lot_id,auction_id=auction_id, amount=amount, user_id=user_id)
+    lot = bot_api.get_lot(lot_id)
+    req = bot_api.post_bid(lot_id=lot_id,auction_id=auction_id, amount=amount, user_id=user_id, chat_id=chat_id)
+    print(req)
+
+    if req.get('message') is True:
+        print(lot)
+        message = f"Ваша ставка за {lot.get('name')} перебита"
+        await notify(lot.get('chat_id'), message)
 
 
 @bot.message_handler(commands=['start'])
