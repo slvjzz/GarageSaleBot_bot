@@ -13,8 +13,7 @@ BOT_API_KEY = config['credentials']['BOT_API_KEY']
 bot = AsyncTeleBot(BOT_API_KEY)
 
 
-async def notify(id, chat_id, message):
-    print('NOTIFYYY!')
+async def notify(chat_id, message):
     await bot.send_message(chat_id, text=message)
 
 async def get_photo(id):
@@ -163,7 +162,7 @@ async def post_bid(lot_id, auction_id, amount, chat_id, user_id):
     if req.get('message') is True:
         print(lot)
         message = f"Ваша ставка за {lot.get('name')} перебита"
-        await notify(user_id, lot.get('chat_id'), message)
+        await notify(lot.get('chat_id'), message)
 
 
 @bot.message_handler(commands=['start'])
